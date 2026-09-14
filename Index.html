@@ -1,69 +1,117 @@
 <!DOCTYPE html>
+
 <html lang="pl">
+
 <head>
+
   <meta charset="UTF-8">
+
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
   <meta name="apple-mobile-web-app-capable" content="yes">
+
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
   <title>Grzyby GPS</title>
 
   <link
+
     rel="stylesheet"
+
     href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+
   />
 
   <style>
+
     * { box-sizing: border-box; }
 
     body {
+
       margin: 0;
+
       font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+
       background: #111;
+
       color: white;
+
       overflow: hidden;
+
     }
 
     #map {
+
       width: 100vw;
+
       height: 100vh;
+
     }
 
     #panel {
+
       position: fixed;
+
       z-index: 9999;
+
       bottom: 20px;
+
       left: 10px;
+
       right: 10px;
+
       background: rgba(0,0,0,.82);
+
       padding: 12px;
+
       border-radius: 16px;
+
       backdrop-filter: blur(8px);
+
     }
 
     #info {
+
       text-align: center;
+
       font-size: 17px;
+
       margin-bottom: 8px;
+
     }
 
     .buttons {
+
       display: flex;
+
       gap: 8px;
+
     }
 
     button {
+
       flex: 1;
+
       border: 0;
+
       padding: 15px 8px;
+
       border-radius: 12px;
+
       font-size: 16px;
+
       font-weight: 700;
+
     }
 
     #park { background: #2ecc71; }
+
     #center { background: #3498db; color: white; }
+
     #reset { background: #e74c3c; color: white; }
+
   </style>
+
 </head>
 
 <body>
@@ -71,139 +119,209 @@
 <div id="map"></div>
 
 <div id="panel">
+
   <div id="info">
+
     GPS: czekam na lokalizację…
+
   </div>
 
   <div class="buttons">
+
     <button id="park">🚗 ZAPARKOWAŁEM</button>
+
     <button id="center">🎯 GDZIE JESTEM</button>
+
     <button id="reset">🗑 RESET</button>
+
   </div>
+
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
+
 const map = L.map('map').setView([51.1, 17.0], 14);
 
 L.tileLayer(
+
   'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+
   {
+
     maxZoom: 19,
+
     attribution: '© OpenStreetMap'
+
   }
+
 ).addTo(map);
 
 let currentPosition = null;
+
 let userMarker = null;
+
 let carMarker = null;
 
 let carPosition = JSON.parse(
+
   localStorage.getItem('carPosition') || 'null'
+
 );
 
 let track = JSON.parse(
+
   localStorage.getItem('track') || '[]'
+
 );
 
 const trackLine = L.polyline(track, {
+
   color: 'red',
+
   weight: 5
+
 }).addTo(map);
 
-
 if (carPosition) {
+
   carMarker = L.marker(
+
     [carPosition.lat, carPosition.lng]
+
   ).addTo(map);
 
   carMarker.bindPopup("🚗 TWOJE AUTO");
-}
 
+}
 
 function distance(lat1, lon1, lat2, lon2) {
 
   const R = 6371000;
 
   const p1 = lat1 * Math.PI / 180;
+
   const p2 = lat2 * Math.PI / 180;
 
   const dp = (lat2-lat1) * Math.PI / 180;
+
   const dl = (lon2-lon1) * Math.PI / 180;
 
   const a =
+
     Math.sin(dp/2) * Math.sin(dp/2) +
+
     Math.cos(p1) *
+
     Math.cos(p2) *
+
     Math.sin(dl/2) *
+
     Math.sin(dl/2);
 
   return R * 2 *
-    Math.atan2(
-      Math.sqrt(a),
-      Math.sqrt(1-a)
-    );
-}
 
+    Math.atan2(
+
+      Math.sqrt(a),
+
+      Math.sqrt(1-a)
+
+    );
+
+}
 
 function updateInfo() {
 
   if (!currentPosition) return;
 
   let text =
+
     "GPS ±" +
+
     Math.round(currentPosition.accuracy) +
+
     " m";
 
   if (carPosition) {
 
     const d = distance(
+
       currentPosition.lat,
+
       currentPosition.lng,
+
       carPosition.lat,
+
       carPosition.lng
+
     );
 
     if (d >= 1000) {
+
       text +=
+
         " | 🚗 " +
+
         (d/1000).toFixed(2) +
+
         " km";
+
     } else {
+
       text +=
+
         " | 🚗 " +
+
         Math.round(d) +
+
         " m";
+
     }
+
   }
 
   document.getElementById("info").innerText = text;
-}
 
+}
 
 function positionUpdate(pos) {
 
   const lat = pos.coords.latitude;
+
   const lng = pos.coords.longitude;
 
   currentPosition = {
+
     lat: lat,
+
     lng: lng,
+
     accuracy: pos.coords.accuracy
+
   };
 
   if (!userMarker) {
 
     userMarker = L.circleMarker(
+
       [lat,lng],
+
       {
+
         radius: 9,
+
         color: "white",
+
         weight: 3,
+
         fillColor: "#007aff",
+
         fillOpacity: 1
+
       }
+
     ).addTo(map);
 
     map.setView([lat,lng],17);
@@ -214,10 +332,12 @@ function positionUpdate(pos) {
 
   }
 
-
   /*
+
     Ślad zapisujemy dopiero,
+
     gdy zaznaczone jest auto.
+
   */
 
   if (carPosition) {
@@ -225,13 +345,21 @@ function positionUpdate(pos) {
     const last = track[track.length - 1];
 
     if (
+
       !last ||
+
       distance(
+
         last[0],
+
         last[1],
+
         lat,
+
         lng
+
       ) > 3
+
     ) {
 
       track.push([lat,lng]);
@@ -239,33 +367,47 @@ function positionUpdate(pos) {
       trackLine.setLatLngs(track);
 
       localStorage.setItem(
+
         "track",
+
         JSON.stringify(track)
+
       );
+
     }
+
   }
 
   updateInfo();
-}
 
+}
 
 function gpsError(error) {
 
   document.getElementById("info").innerText =
-    "Błąd GPS: " + error.message;
-}
 
+    "Błąd GPS: " + error.message;
+
+}
 
 if ("geolocation" in navigator) {
 
   navigator.geolocation.watchPosition(
+
     positionUpdate,
+
     gpsError,
+
     {
+
       enableHighAccuracy: true,
+
       maximumAge: 0,
+
       timeout: 15000
+
     }
+
   );
 
 } else {
@@ -274,105 +416,148 @@ if ("geolocation" in navigator) {
 
 }
 
-
 document
+
 .getElementById("park")
+
 .onclick = function() {
 
   if (!currentPosition) {
+
     alert("Jeszcze nie mam pozycji GPS.");
+
     return;
+
   }
 
   carPosition = {
+
     lat: currentPosition.lat,
+
     lng: currentPosition.lng
+
   };
 
   localStorage.setItem(
+
     "carPosition",
+
     JSON.stringify(carPosition)
+
   );
 
-
   track = [
+
     [
+
       currentPosition.lat,
+
       currentPosition.lng
+
     ]
+
   ];
 
   trackLine.setLatLngs(track);
 
   localStorage.setItem(
+
     "track",
+
     JSON.stringify(track)
+
   );
 
-
   if (carMarker) {
+
     map.removeLayer(carMarker);
+
   }
 
   carMarker = L.marker(
+
     [
+
       carPosition.lat,
+
       carPosition.lng
+
     ]
+
   ).addTo(map);
 
   carMarker
+
     .bindPopup("🚗 TWOJE AUTO")
+
     .openPopup();
 
   updateInfo();
+
 };
 
-
 document
+
 .getElementById("center")
+
 .onclick = function() {
 
   if (currentPosition) {
 
     map.setView(
+
       [
+
         currentPosition.lat,
+
         currentPosition.lng
+
       ],
+
       18
+
     );
 
   }
 
 };
 
-
 document
+
 .getElementById("reset")
+
 .onclick = function() {
 
   if (!confirm(
+
     "Usunąć parking i cały zapisany ślad?"
+
   )) return;
 
   localStorage.removeItem("carPosition");
+
   localStorage.removeItem("track");
 
   carPosition = null;
+
   track = [];
 
   trackLine.setLatLngs([]);
 
   if (carMarker) {
+
     map.removeLayer(carMarker);
+
     carMarker = null;
+
   }
 
   updateInfo();
+
 };
 
 </script>
 
 </body>
+
 </html>
